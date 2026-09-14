@@ -1,0 +1,20 @@
+[Unit]
+Description=Key Solution lead API
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/key-solution/backend
+EnvironmentFile=/etc/key-solution.env
+ExecStart=/usr/bin/node /opt/key-solution/backend/app.js
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/key-solution
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+node_modules/
+data/leads/*
+data/uploads/*
+!data/leads/.gitkeep
+!data/uploads/.gitkeep
+*.log
+.DS_Store
+Thumbs.db
+
