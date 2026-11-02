@@ -1,0 +1,12 @@
+:root {
+  font-family: Inter, Arial, sans-serif;
+  color: #15202b;
+  background: #f5f7fa;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; }
+a { color: inherit; }
+button, input { font: inherit; }

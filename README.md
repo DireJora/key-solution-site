@@ -1,29 +1,47 @@
-# klyuchevoe-reshenie.ru — deployment bundle
+# klyuchevoe-reshenie.ru
 
-Состав:
-- `site/` — статический сайт; основной файл переименован в `index.html`.
-- `backend/` — API формы `/api/lead`, healthcheck `/api/health`, конфигурация Метрики `/api/site-config`.
-- `deploy/` — шаблоны Nginx, systemd, env и актуальная конфигурация n8n.
+Актуальный исходный код и deployment-пакет сайта «Ключевое решение».
 
-## Что делает форма
-Заявка валидируется, вложения ограничены 5 файлами / 10 МБ каждый / 20 МБ суммарно, есть honeypot и rate-limit. Каждая заявка сохраняется в `/var/lib/key-solution/leads/YYYY-MM-DD.jsonl`, вложения — в `/var/lib/key-solution/uploads/`. Если задан `N8N_WEBHOOK_URL`, метаданные заявки дополнительно отправляются в n8n. Даже при недоступности n8n заявка остается сохраненной локально.
+## Состав
 
-## Что нужно перед запуском
-1. VPS Ubuntu 24.04 LTS с публичным IPv4. Для сайта достаточно 1 vCPU / 2 ГБ, но если n8n будет на том же VPS — рекомендуется 2 vCPU / 4 ГБ RAM.
-2. Установить Node.js 22 LTS, Nginx, Certbot. Для n8n — Docker + Docker Compose plugin.
-3. Скопировать `site/*` в `/var/www/klyuchevoe/`.
-4. Скопировать проект в `/opt/klyuchevoe/key-solution-site-deployable/`, затем в `backend/` выполнить `npm ci --omit=dev`.
-5. Создать `/var/lib/key-solution/{leads,uploads}` с ограниченными правами для API.
-6. Скопировать `deploy/key-solution.env.example` в `/etc/key-solution.env` и заполнить значения.
-7. Установить systemd unit и Nginx config, проверить `nginx -t` и `/api/health`.
-8. Только после серверной проверки менять DNS REG.RU.
-9. После DNS выпустить сертификат: `certbot --nginx -d klyuchevoe-reshenie.ru -d www.klyuchevoe-reshenie.ru`.
+- `src/`, `public/`, `scripts/` — исходники Astro и скрипты сборки.
+- `site/` — свежая production-сборка, готовая для размещения в `/var/www/klyuchevoe/`.
+- `backend/` — API формы `/api/lead`, `/api/health` и `/api/site-config`.
+- `deploy/` — шаблоны Nginx, systemd и Docker Compose для n8n.
+- `automation/n8n/workflows/` — безопасные экспорты workflow без API-ключей.
 
-DNS не включен в этот пакет и не должен меняться без отдельного подтверждения.
+## Локальная сборка
 
-## Текущее production-состояние
+```powershell
+pnpm install
+$env:PUBLIC_SITE_LIVE='true'
+pnpm build
+```
 
-- Домен и `www` направлены на VDS `135.106.210.158`.
-- HTTPS, Nginx, статический сайт и `key-solution-api` проверены после перезагрузки VDS.
-- n8n `2.38.7` запущен через Docker Compose на `127.0.0.1:5678` и доступен через `https://n8n.klyuchevoe-reshenie.ru`.
-- Рабочие заявки и вложения находятся только на сервере и намеренно не входят в Git.
+Результат появляется в `dist/`. Проверенная сборка дополнительно сохранена в `site/`.
+
+## Форма заявки
+
+Backend проверяет обязательные поля, согласие, honeypot и ограничения вложений. Каждая заявка сохраняется в локальный JSONL-журнал, вложения — отдельно. Если настроен `N8N_WEBHOOK_URL`, метаданные дополнительно передаются в n8n; недоступность n8n не отменяет локальное сохранение.
+
+## Production-состояние на 2026-11-02
+
+- сайт и публичный `/api/health` работают через HTTPS;
+- Nginx, `key-solution-api`, Docker и n8n активны;
+- n8n работает в Docker и слушает только `127.0.0.1:5678`;
+- действующий workflow доставки заявок в amoCRM не изменён;
+- добавлены два **выключенных** workflow нормативного поиска: поиск официальных источников и извлечение выбранных документов;
+- Tavily с IP VDS получает `403`, поэтому рабочий тест выполнен через Firecrawl;
+- секреты хранятся только в зашифрованных credentials n8n и не входят в Git;
+- рабочие заявки, вложения, SQLite n8n и резервные копии сервера в репозиторий не включаются;
+- контролируемая перезагрузка VDS после системных обновлений остаётся отдельной операцией и не выполняется автоматически.
+
+## Развёртывание
+
+1. Собрать сайт с `PUBLIC_SITE_LIVE=true`.
+2. Проверить содержимое `dist/` и создать серверную резервную копию текущего сайта.
+3. Скопировать сборку в `/var/www/klyuchevoe/`.
+4. Проверить `nginx -t`, затем перечитать конфигурацию Nginx.
+5. Проверить главную страницу, ключевые маршруты и `/api/health` через публичный HTTPS.
+
+DNS и production-сервисы нельзя изменять только на основании содержимого репозитория: каждое инфраструктурное изменение требует отдельной проверки и понятного rollback.

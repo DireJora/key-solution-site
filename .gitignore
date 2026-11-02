@@ -2,6 +2,14 @@
 .env.*
 !.env.example
 node_modules/
+dist/
+.astro/
+.sites-*/
+*.zip
+credentials.md
+*.sqlite
+*.sqlite-*
+backups/
 data/leads/*
 data/uploads/*
 !data/leads/.gitkeep
@@ -9,4 +17,3 @@ data/uploads/*
 *.log
 .DS_Store
 Thumbs.db
-

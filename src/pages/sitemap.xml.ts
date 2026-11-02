@@ -1,0 +1,2 @@
+const paths=["/","/notifications/","/electrical/","/regulations/tr-ts-004/","/regulations/tr-ts-010/","/regulations/tr-ts-020/","/regulations/tr-eaes-037/","/privacy/","/consent/"];
+export const GET=()=>new Response(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${paths.map(path=>`\n  <url><loc>https://klyuchevoe-reshenie.ru${path}</loc></url>`).join("")}\n</urlset>`,{headers:{"Content-Type":"application/xml; charset=utf-8"}});

@@ -1,0 +1,14 @@
+---
+import "../styles/global.css";
+const { title, description = "Разрешительная документация для поставок в Россию и ЕАЭС" } = Astro.props;
+---
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+  </head>
+  <body><slot /></body>
+</html>

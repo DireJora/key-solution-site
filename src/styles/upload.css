@@ -1,0 +1,30 @@
+.lead-form label:has(input[type="file"]) {
+  padding: 18px;
+  border: 2px dashed #9bbdc2;
+  border-radius: 12px;
+  background: #f1f8f8;
+  color: #173f48;
+}
+
+.lead-form input[type="file"] {
+  padding: 10px;
+  border: 1px solid #b6cdd1;
+  background: #fff;
+  cursor: pointer;
+}
+
+.lead-form input[type="file"]::file-selector-button {
+  margin-right: 12px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #087f8c;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.lead-form label:has(input[type="file"]) small {
+  color: #5c6b76;
+  font-weight: 400;
+}

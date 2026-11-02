@@ -1,0 +1,81 @@
+---
+import Site from "../layouts/Site.astro";
+---
+<Site title="Ключевое решение — разрешительная документация для поставок" description="Определим комплект разрешительных документов, стоимость и сроки по вашей поставке за один рабочий день.">
+<main>
+  <section class="hero"><div class="wrap"><p class="eyebrow">Разрешительная документация • Россия и ЕАЭС</p><h1>Определим разрешительные документы для поставки и реализации за один день</h1><p class="lead">Изучим товар и техническое описание, опишем процесс оформления, рассчитаем точную смету и реалистичные сроки. Предварительная оценка бесплатна.</p><div class="hero-actions"><a class="button" href="#request">Узнать условия работы</a><a class="button secondary" href="https://t.me/direjora" data-analytics-goal="telegram_click">Написать в Telegram</a><a class="button secondary" href="https://wa.me/79165874436" data-analytics-goal="whatsapp_click">Написать в WhatsApp</a></div><div class="proofline"><span>Полностью дистанционно</span><span>Пн–пт, 10:00–18:00 МСК</span><span>Вся Россия и ЕАЭС</span></div></div></section>
+  <section class="section"><div class="wrap"><h2>Оказываемые услуги</h2><div class="grid two"><article class="card"><h3>Лицензирование</h3><ol><li><a href="/notifications/">Нотификация ЦЛСЗ ФСБ (2.19)</a></li><li><a href="/notifications/">Нотификация РК КНБ (2.19)</a></li><li>РЭС и ВЧУ (2.16)</li><li>Техническое исследование СКЗИ (2.19)</li><li>Заключение на товар, предназначающийся для негласного получения информации (2.17)</li></ol></article><article class="card"><h3>Оформление документов о соответствии</h3><p>Комплексная проверка товаров на соответствие требованиям Технических регламентов ТР ТС 004, 020 и ТР ЕАЭС 037.</p></article></div></div></section>
+  <section id="process" class="section dark"><div class="wrap"><h2>От запроса до результата</h2><div class="grid process"><article class="card"><h3>Заполнение мини-анкеты на сайте — 5 минут</h3></article><article class="card"><h3>Составление этапов работ с указанием конкретных сроков и стоимости — в течение 1 рабочего дня</h3></article><article class="card"><h3>Заключение договора</h3></article><article class="card"><h3>Оказание услуги</h3></article><article class="card"><h3>Получение результата и оплата</h3></article></div></div></section>
+  <section class="section white"><div class="wrap"><h2>Примеры документов</h2><div class="docs"><a class="doc" href="/documents/original-notification.pdf"><strong>Нотификация</strong><span>Открыть исходный документ →</span></a><a class="doc" href="/documents/original-declaration-tr-ts-004-020.pdf"><strong>Декларация ТР ТС 004/020</strong><span>Открыть исходный документ →</span></a><a class="doc" href="/documents/original-declaration-tr-eaes-037.pdf"><strong>Декларация ТР ЕАЭС 037</strong><span>Открыть исходный документ →</span></a><a class="doc" href="/documents/obrazec-sertifikata-tr-ts-004-020.pdf"><strong>Сертификат соответствия ТР ТС 004/020</strong><span>Открыть обезличенный документ →</span></a></div></div></section>
+  <section class="section"><div class="wrap"><div class="section-heading"><h2>Цены и сроки</h2><div class="price-actions"><a class="button secondary" href="/documents/price-list.pdf" target="_blank">Посмотреть прайс</a><a class="button secondary" href="/documents/price-list.pdf" download>Скачать прайс</a></div></div><table class="price-table"><thead><tr><th>Услуга</th><th>Стоимость</th><th>Срок</th></tr></thead><tbody><tr><td>Декларация, 1 документ</td><td>от 15 000 ₽</td><td>1–2 рабочих дня</td></tr><tr><td>От 4 деклараций</td><td>от 10 000 ₽ за документ</td><td>1–2 рабочих дня</td></tr><tr><td>От 10 деклараций</td><td>от 6 500 ₽ за документ</td><td>1–2 рабочих дня</td></tr><tr><td><a href="/notifications/">Нотификация РК КНБ (2.19)</a></td><td>от 25 000 руб.</td><td>3–7 рабочих дней</td></tr><tr><td><a href="/notifications/">Нотификация ЦЛСЗ ФСБ (2.19)</a></td><td>от 25 000 руб.</td><td>от 14 рабочих дней</td></tr><tr><td>Лицензирование РЭС и ВЧУ (2.16)</td><td>от 20 000 ₽</td><td>от 5 рабочих дней</td></tr><tr><td>Техническое исследование СКЗИ (2.19)</td><td>от 10 000 ₽</td><td>до 5 рабочих дней</td></tr><tr><td>Заключение на товар, предназначающийся для негласного получения информации (2.17)</td><td>от 50 000 ₽</td><td>от 5 до 15 рабочих дней</td></tr><tr><td>Отказные письма и отрицательные решения</td><td>от 6 500 ₽</td><td>1 рабочий день</td></tr><tr><td>СТ-1 (экспортный)</td><td>от 15 000 ₽</td><td>от 5 рабочих дней</td></tr><tr><td>Сертификат соответствия Техническому регламенту</td><td>от 230 000 ₽</td><td>2–3 месяца</td></tr></tbody></table></div></section>
+  <section id="request" class="section white"><div class="wrap form-shell"><div><h2>Получить бесплатную консультацию</h2></div><form class="lead-form" data-lead-form action="/api/lead" method="post" enctype="multipart/form-data"><label>Имя<input name="name" autocomplete="name" maxlength="120" required /></label><label>Компания<input name="company" autocomplete="organization" maxlength="180" /></label><label class="full">Телефон, Telegram или WhatsApp<input name="contact" maxlength="220" required /></label><label class="full">Товар или задача<textarea name="message" maxlength="4000" required></textarea></label><label class="full">Приложить файлы — необязательно<input type="file" name="attachments" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" /><small>До 5 файлов: PDF, Word, Excel или изображения. До 10 МБ на файл и 20 МБ суммарно.</small></label><label class="trap" aria-hidden="true">Сайт<input name="website" tabindex="-1" autocomplete="off" /></label><input type="hidden" name="started_at" value="" /><label class="full"><span><input type="checkbox" name="consent" value="yes" required /> Согласен на <a href="/consent/" target="_blank">обработку персональных данных</a> в соответствии с <a href="/privacy/" target="_blank">Политикой</a></span></label><button class="button full" type="submit" data-submit>Отправить запрос</button><p class="form-status full" data-form-status aria-live="polite"></p></form></div></section>
+</main>
+<script>
+  const form = document.querySelector("[data-lead-form]");
+  const attributionKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "yclid", "gclid"];
+  const params = new URLSearchParams(location.search);
+  attributionKeys.forEach((key) => {
+    const value = params.get(key);
+    if (value) sessionStorage.setItem(key, value);
+  });
+
+  if (form instanceof HTMLFormElement) {
+    const status = form.querySelector("[data-form-status]");
+    const submit = form.querySelector("[data-submit]");
+    const startedAt = form.elements.namedItem("started_at");
+    if (startedAt instanceof HTMLInputElement) startedAt.value = String(Date.now());
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!(status instanceof HTMLElement) || !(submit instanceof HTMLButtonElement)) return;
+
+      if (submit.disabled) return;
+      const data = new FormData(form);
+      const fileInput = form.elements.namedItem("attachments");
+      const files = fileInput instanceof HTMLInputElement ? [...(fileInput.files || [])] : [];
+      const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+      if (files.length > 5) {
+        status.textContent = "Можно приложить не более пяти файлов.";
+        return;
+      }
+      if (files.some((file) => file.size > 10 * 1024 * 1024) || totalSize > 20 * 1024 * 1024) {
+        status.textContent = "Проверьте размер файлов: до 10 МБ каждый и до 20 МБ суммарно.";
+        return;
+      }
+
+      attributionKeys.forEach((key) => data.set(key, sessionStorage.getItem(key) || ""));
+      data.set("service", params.get("service") || "general");
+      data.set("landing_path", `${location.pathname}${location.search}`);
+      data.set("referrer", document.referrer);
+
+      submit.disabled = true;
+      status.textContent = "Отправляем заявку…";
+      try {
+        const analytics = await window.getLeadAnalytics?.();
+        let allowed = false;
+        try { allowed = localStorage.getItem("analytics-consent") === "yes"; } catch {}
+        data.set("analytics_consent", allowed ? "yes" : "no");
+        data.set("metrika_client_id", allowed ? (analytics?.metrika_client_id || "") : "");
+        const response = await fetch(form.action, { method: "POST", body: data, headers: { Accept: "application/json" } });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok) throw new Error(result.code || "delivery_failed");
+        status.textContent = "Заявка отправлена. Мы свяжемся с вами в течение рабочего дня.";
+        window.trackGoal?.("lead_sent", { service: data.get("service") });
+        form.reset();
+        if (startedAt instanceof HTMLInputElement) startedAt.value = String(Date.now());
+      } catch (error) {
+        const code = error instanceof Error ? error.message : "delivery_failed";
+        if (code === "integration_not_configured") {
+          status.innerHTML = 'Доставка заявок ещё подключается. Сейчас напишите нам в <a href="https://t.me/direjora" data-analytics-goal="telegram_click">Telegram @direjora</a>.';
+        } else if (code === "rate_limited") {
+          status.textContent = "Слишком много попыток. Подождите несколько минут и попробуйте снова.";
+        } else {
+          status.innerHTML = 'Не удалось отправить заявку. Повторите попытку или напишите в <a href="https://t.me/direjora" data-analytics-goal="telegram_click">Telegram @direjora</a>.';
+        }
+      } finally {
+        submit.disabled = false;
+      }
+    });
+  }
+</script>
+</Site>

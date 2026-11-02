@@ -1,0 +1,91 @@
+[
+  {
+    "id": "keySolutionNormativeExtract20261102",
+    "name": "Ключевое решение — извлечение выбранных нормативных источников",
+    "active": false,
+    "nodes": [
+      {
+        "id": "Manual",
+        "name": "Manual",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [0, 0],
+        "parameters": {}
+      },
+      {
+        "id": "SelectedSources",
+        "name": "Выбранные официальные источники",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [240, 0],
+        "parameters": {
+          "jsCode": "const urls=['http://clsz.fsb.ru/clsz/notif.htm','https://eec.eaeunion.org/upload/files/catr/EP.pdf/%D0%9F%D1%80%D0%B8%D0%BB%D0%BE%D0%B6%D0%B5%D0%BD%D0%B8%D0%B5%209_%D1%80%D0%B5%D0%B4%20131%20%286%29.pdf','https://customs.gov.ru/fiz/pravila-peremeshheniya-tovarov/peremeshhenie-shifroval-nyx-%28kriptograficheskix%29-sredstv'];return urls.map((url,index)=>({json:{url,order:index+1}}));"
+        }
+      },
+      {
+        "id": "Scrape",
+        "name": "Firecrawl — извлечь текст",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [500, 0],
+        "parameters": {
+          "url": "https://api.firecrawl.dev/v2/scrape",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "method": "POST",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ url: $json.url, formats: ['markdown'], onlyMainContent: true, timeout: 90000, removeBase64Images: true, blockAds: true }) }}",
+          "options": {
+            "timeout": 120000,
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "KSFirecrawlExtract20261102",
+            "name": "KeySolution Firecrawl Extract"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "Package",
+        "name": "Пакет извлечённых источников",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [780, 0],
+        "parameters": {
+          "jsCode": "const sources=[];const failures=[];const selected=$('Выбранные официальные источники').all();const input=$input.all();for(let index=0;index<input.length;index++){const body=input[index].json||{};const data=body.data||{};const meta=data.metadata||{};const fallbackUrl=String(selected[index]?.json?.url||'');const url=String(meta.sourceURL||meta.url||body.url||fallbackUrl);const markdown=String(data.markdown||'');if(body.success===true&&url&&markdown){sources.push({url,title:String(meta.title||''),statusCode:meta.statusCode??null,markdown:markdown.slice(0,30000),characters:markdown.length});}else{failures.push({url,error:String(body.error?.message||body.message||'content_not_extracted').slice(0,500)});}}if(!sources.length)throw new Error('No official source text extracted');return [{json:{status:'extracted_sources_for_human_review',warning:'Извлечённый текст — сырьё для анализа, а не юридическое заключение. Итог подтверждает Кирилл.',checkedAt:new Date().toISOString(),sources,failures}}];"
+        }
+      }
+    ],
+    "connections": {
+      "Manual": {
+        "main": [[{"node": "Выбранные официальные источники", "type": "main", "index": 0}]]
+      },
+      "Выбранные официальные источники": {
+        "main": [[{"node": "Firecrawl — извлечь текст", "type": "main", "index": 0}]]
+      },
+      "Firecrawl — извлечь текст": {
+        "main": [[{"node": "Пакет извлечённых источников", "type": "main", "index": 0}]]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "saveDataSuccessExecution": "none",
+      "saveDataErrorExecution": "all",
+      "saveManualExecutions": false,
+      "executionTimeout": 300
+    },
+    "staticData": null,
+    "meta": null,
+    "pinData": null,
+    "versionId": "9f173703-acde-4d89-8861-8ba539760226",
+    "tags": []
+  }
+]

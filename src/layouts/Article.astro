@@ -1,0 +1,9 @@
+---
+import Site from "./Site.astro";
+const { title, description, canonicalPath, eyebrow } = Astro.props;
+const service = canonicalPath?.split("/").filter(Boolean).join("/") || "general";
+const requestUrl = `/?service=${encodeURIComponent(service)}#request`;
+---
+<Site title={title} description={description} canonicalPath={canonicalPath}>
+  <main><div class="wrap breadcrumbs"><a href="/">Главная</a> → <slot name="crumb" /></div><section class="article-hero"><div class="wrap"><p class="eyebrow">{eyebrow}</p><h1>{title}</h1><p class="lead">{description}</p><div class="hero-actions"><a class="button" href={requestUrl}>Получить расчёт</a><a class="button secondary" href="https://t.me/direjora" data-analytics-goal="telegram_click">Задать вопрос</a></div></div></section><article class="wrap article"><slot /></article></main>
+</Site>

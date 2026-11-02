@@ -1,0 +1,103 @@
+[
+  {
+    "id": "keySolutionNormativeResearch20261102",
+    "name": "Ключевое решение — нормативный поиск по официальным источникам",
+    "active": false,
+    "nodes": [
+      {
+        "id": "Manual",
+        "name": "Manual",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [0, 0],
+        "parameters": {}
+      },
+      {
+        "id": "Input",
+        "name": "Запрос и официальные домены",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [240, 0],
+        "parameters": {
+          "jsCode": "return [{json:{query:'нотификация о характеристиках шифровальных криптографических средств решения ЕЭК порядок регистрации',domains:['eec.eaeunion.org','docs.eaeunion.org','eaeunion.org','clsz.fsb.ru','fsa.gov.ru','publication.pravo.gov.ru','pravo.gov.ru','regulation.gov.ru','rosstandart.gov.ru','customs.gov.ru']}}];"
+        }
+      },
+      {
+        "id": "Search",
+        "name": "Firecrawl — поиск официальных источников",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [500, 0],
+        "parameters": {
+          "url": "https://api.firecrawl.dev/v2/search",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "method": "POST",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ query: $json.query, limit: 5, sources: [{ type: 'web' }], includeDomains: $json.domains, safe: true, timeout: 60000, ignoreInvalidURLs: true, highlights: true }) }}",
+          "options": {
+            "timeout": 90000,
+            "response": {
+              "response": {
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "KSFirecrawlExtract20261102",
+            "name": "KeySolution Firecrawl Extract"
+          }
+        }
+      },
+      {
+        "id": "Filter",
+        "name": "Оставить официальные источники",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [760, 0],
+        "parameters": {
+          "jsCode": "const cfg=$('Запрос и официальные домены').first().json;const body=$input.first().json;if(body.success!==true||!Array.isArray(body.data?.web))throw new Error('Firecrawl search response has no web results');const allowed=cfg.domains.map(x=>x.toLowerCase());const official=(raw)=>{const host=String(raw||'').toLowerCase().replace(/^[a-z]+:\\/\\//,'').split('/')[0].split(':')[0].replace(/^www\\./,'');return allowed.some(d=>host===d||host.endsWith('.'+d));};const seen=new Set();const sources=[];for(const r of body.data.web){if(!r||typeof r.url!=='string'||!official(r.url)||seen.has(r.url))continue;seen.add(r.url);sources.push({title:String(r.title||r.metadata?.title||''),url:r.url,score:null,snippet:String(r.description||r.metadata?.description||'').slice(0,1800),publishedDate:r.metadata?.publishedTime||null,extract:String(r.markdown||'').slice(0,6000)});}if(!sources.length)throw new Error('No official sources returned');return [{json:{status:'official_sources_found',query:cfg.query,checkedAt:new Date().toISOString(),sources:sources.slice(0,5),searchRequestId:body.id||null,searchUsage:{credits:body.creditsUsed??null},warning:body.warning||null}}];"
+        }
+      },
+      {
+        "id": "Package",
+        "name": "Пакет доказательств",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [1020, 0],
+        "parameters": {
+          "jsCode": "const base=$input.first().json;return [{json:{status:'draft_evidence_for_human_review',warning:'Это подборка источников, а не юридическое заключение. Итог подтверждает Кирилл.',providerWarning:base.warning||null,query:base.query,checkedAt:base.checkedAt,sources:base.sources,failedExtractions:base.sources.filter(x=>!x.extract).map(x=>({url:x.url,error:'content_not_extracted'})),usage:{search:base.searchUsage},requestIds:{search:base.searchRequestId}}}];"
+        }
+      }
+    ],
+    "connections": {
+      "Manual": {
+        "main": [[{"node": "Запрос и официальные домены", "type": "main", "index": 0}]]
+      },
+      "Запрос и официальные домены": {
+        "main": [[{"node": "Firecrawl — поиск официальных источников", "type": "main", "index": 0}]]
+      },
+      "Firecrawl — поиск официальных источников": {
+        "main": [[{"node": "Оставить официальные источники", "type": "main", "index": 0}]]
+      },
+      "Оставить официальные источники": {
+        "main": [[{"node": "Пакет доказательств", "type": "main", "index": 0}]]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "saveDataSuccessExecution": "none",
+      "saveDataErrorExecution": "all",
+      "saveManualExecutions": false,
+      "executionTimeout": 150
+    },
+    "staticData": null,
+    "meta": null,
+    "pinData": null,
+    "versionId": "b1f7814e-0be2-4e67-9938-ae3bb5fdf674",
+    "tags": []
+  }
+]

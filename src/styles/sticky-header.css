@@ -1,0 +1,18 @@
+html {
+  scroll-padding-top: 76px;
+}
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 1px 0 rgba(21, 37, 51, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+@media (max-width: 540px) {
+  html {
+    scroll-padding-top: 66px;
+  }
+}
