@@ -1,0 +1,1169 @@
+[
+  {
+    "updatedAt": "2026-11-07T20:54:45.000Z",
+    "createdAt": "2026-11-07T15:58:21.412Z",
+    "id": "keySolutionDeliveryTelegramDraft20261107",
+    "name": "Ключевое решение — сайт → amoCRM → Telegram",
+    "description": null,
+    "active": false,
+    "isArchived": false,
+    "nodes": [
+      {
+        "id": "Local webhook",
+        "name": "Local webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "key-solution-crm-delivery-telegram-v2",
+          "responseMode": "onReceived"
+        },
+        "webhookId": "8bd26926-4577-4f64-877f-671ba14d0a06"
+      },
+      {
+        "id": "Prepare",
+        "name": "Prepare",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          220,
+          0
+        ],
+        "parameters": {
+          "jsCode": "const p=$input.first().json.body; const l=p?.lead;\nif(!l || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(l.id)) throw new Error('Invalid lead UUID');\nif(p.source!=='klyuchevoe-reshenie.ru') throw new Error('Invalid source');\nconst clean=(v,n)=>String(v||'').slice(0,n);\nconst marker='KS-SITE:'+l.id, name=marker+' '+clean(l.service,80);\nconst contact={name:clean(l.name,120)}; const raw=clean(l.contact,220);\nif(/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(raw)) contact.custom_fields_values=[{field_code:'EMAIL',values:[{value:raw,enum_code:'WORK'}]}];\nelse if(/^\\+?[\\d ()-]{7,25}$/.test(raw)) contact.custom_fields_values=[{field_code:'PHONE',values:[{value:raw,enum_code:'WORK'}]}];\nconst embedded={contacts:[contact]}; if(l.company) embedded.companies=[{name:clean(l.company,180)}];\n// Plain lead creation avoids complex-add deduplication merging existing client cards.\n// Contact and company values are preserved in the private lead note.\nconst model={name,pipeline_id:11370274,status_id:89096506,request_id:l.id};\nconst clientId=l.analyticsConsent===true && /^\\d{1,32}$/.test(String(l.metrikaClientId||\"\")) ? String(l.metrikaClientId) : \"\";\nconst noteText=[marker, 'Имя: '+clean(l.name,120),'Компания: '+clean(l.company,180),'Контакт: '+raw,'Услуга: '+clean(l.service,120),'Страница: '+clean(l.landingPath,1000),'Сообщение: '+clean(l.message,4000),'Метки: '+JSON.stringify(l.utm||{}).slice(0,3500),'Вложения на закрытом сервере: '+(Array.isArray(l.attachments)?l.attachments.length:0)].concat(clientId ? ['ClientID Метрики: '+clientId] : []).join('\\n').slice(0,10000);\nlet contactKind='name', contactQuery='';\nif (/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(raw)) { contactKind='email'; contactQuery=raw.toLowerCase(); }\nelse if (/^\\+?[\\d ()-]{7,25}$/.test(raw)) { contactKind='phone'; contactQuery=raw; }\nelse { contact.name=(clean(l.name,90)||'Контакт с сайта')+' [site '+l.id.slice(0,8)+']'; contactQuery=contact.name; }\nreturn [{json:{marker,name,model,noteText,allow_write:p.allow_write===true,contactKind,contactQuery,contactModel:contact,notification:{name:clean(l.name,120),company:clean(l.company,180),contact:raw,service:clean(l.service,120),message:clean(l.message,700)}}}];"
+        }
+      },
+      {
+        "id": "Find lead",
+        "name": "Find lead",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          440,
+          0
+        ],
+        "parameters": {
+          "url": "={{ 'https://krebrikus.amocrm.ru/api/v4/leads?limit=250&query='+encodeURIComponent($('Prepare').first().json.marker) }}",
+          "method": "GET",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "options": {
+            "timeout": 15000,
+            "response": {
+              "response": {
+                "responseFormat": "json",
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "alwaysOutputData": true,
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "L9Xprc4UN9m0Cgtb",
+            "name": "amoCRM — Ключевое решение"
+          }
+        }
+      },
+      {
+        "id": "Decide lead",
+        "name": "Decide lead",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          660,
+          0
+        ],
+        "parameters": {
+          "jsCode": "let b=$input.first().json; if(typeof b.data===\"string\") b=JSON.parse(b.data); if(b.body) b=b.body; const p=$('Prepare').first().json; const hits=(b._embedded?.leads||[]).filter(l=>l.pipeline_id===11370274&&l.name===p.name); if(hits.length>1) throw new Error('Duplicate UUID requires review'); if(!hits.length&&!p.allow_write) throw new Error('Unconfirmed creation requires review'); return [{json:{found:hits.length===1,lead_id:hits[0]?.id||null}}];"
+        }
+      },
+      {
+        "id": "Lead exists",
+        "name": "Lead exists",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          880,
+          0
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "Lead exists",
+                "leftValue": "={{ $json.found }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Create lead",
+        "name": "Create lead",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1100,
+          0
+        ],
+        "parameters": {
+          "url": "https://krebrikus.amocrm.ru/api/v4/leads",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify([$('Prepare').first().json.model]) }}",
+          "options": {
+            "timeout": 15000,
+            "response": {
+              "response": {
+                "responseFormat": "json",
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "alwaysOutputData": true,
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "L9Xprc4UN9m0Cgtb",
+            "name": "amoCRM — Ключевое решение"
+          }
+        }
+      },
+      {
+        "id": "Created ID",
+        "name": "Created ID",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1320,
+          0
+        ],
+        "parameters": {
+          "jsCode": "let b=$input.first().json; if(typeof b.data===\"string\") b=JSON.parse(b.data); if(b.body) b=b.body; const a=Array.isArray(b)?b:b._embedded?.leads; const r=a?.[0]; if(!Number.isInteger(r?.id)||r.merged===true) throw new Error('Unexpected create response requires review'); return [{json:{lead_id:r.id}}];"
+        }
+      },
+      {
+        "id": "Verify destination",
+        "name": "Verify destination",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1540,
+          0
+        ],
+        "parameters": {
+          "url": "={{ 'https://krebrikus.amocrm.ru/api/v4/leads/'+$json.lead_id }}",
+          "method": "GET",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "options": {
+            "timeout": 15000,
+            "response": {
+              "response": {
+                "responseFormat": "json",
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "alwaysOutputData": true,
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "L9Xprc4UN9m0Cgtb",
+            "name": "amoCRM — Ключевое решение"
+          }
+        }
+      },
+      {
+        "id": "Verified lead",
+        "name": "Verified lead",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1760,
+          0
+        ],
+        "parameters": {
+          "jsCode": "let b=$input.first().json; if(typeof b.data===\"string\") b=JSON.parse(b.data); if(b.body) b=b.body;const p=$('Prepare').first().json; if(b.pipeline_id!==11370274||b.name!==p.name||!Number.isInteger(b.id)) throw new Error('Destination mismatch'); return [{json:{lead_id:b.id}}];"
+        }
+      },
+      {
+        "id": "Read notes",
+        "name": "Read notes",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          4620,
+          0
+        ],
+        "parameters": {
+          "url": "={{ 'https://krebrikus.amocrm.ru/api/v4/leads/'+$json.lead_id+'/notes?limit=250&order[updated_at]=desc' }}",
+          "method": "GET",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "options": {
+            "timeout": 15000,
+            "response": {
+              "response": {
+                "responseFormat": "json",
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "alwaysOutputData": true,
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "L9Xprc4UN9m0Cgtb",
+            "name": "amoCRM — Ключевое решение"
+          }
+        }
+      },
+      {
+        "id": "Decide note",
+        "name": "Decide note",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4840,
+          0
+        ],
+        "parameters": {
+          "jsCode": "let b=$input.first().json; if(typeof b.data===\"string\") b=JSON.parse(b.data); if(b.body) b=b.body;const p=$('Prepare').first().json; const notes=b._embedded?.notes||[];\nconst decode=text=>String(text||'').replace(/&(?:amp|quot|apos|lt|gt|#\\d+|#x[0-9a-f]+);/gi,e=>{const named={'&amp;':'&','&quot;':'\"','&apos;':\"'\",'&lt;':'<','&gt;':'>'}; if(named[e.toLowerCase()]!==undefined) return named[e.toLowerCase()]; const hex=e[2].toLowerCase()==='x'; const cp=parseInt(e.slice(hex?3:2,-1),hex?16:10); return cp>=0&&cp<=0x10ffff?String.fromCodePoint(cp):e;});\nconst hit=notes.find(n=>n.note_type==='common'&&(n.params?.text===p.noteText||decode(n.params?.text)===p.noteText));\nif(!hit&&!p.allow_write) throw new Error('Unconfirmed note requires review'); return [{json:{lead_id:$('Verified lead').first().json.lead_id,note_found:!!hit,note_id:hit?.id||null,note_body:[{note_type:'common',params:{text:p.noteText}}]}}];"
+        }
+      },
+      {
+        "id": "Note exists",
+        "name": "Note exists",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          5060,
+          0
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "Note exists",
+                "leftValue": "={{ $json.note_found }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "Create note",
+        "name": "Create note",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          5280,
+          120
+        ],
+        "parameters": {
+          "url": "={{ 'https://krebrikus.amocrm.ru/api/v4/leads/'+$json.lead_id+'/notes' }}",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.note_body) }}",
+          "options": {
+            "timeout": 15000,
+            "response": {
+              "response": {
+                "responseFormat": "json",
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "alwaysOutputData": true,
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "L9Xprc4UN9m0Cgtb",
+            "name": "amoCRM — Ключевое решение"
+          }
+        }
+      },
+      {
+        "id": "Created note",
+        "name": "Created note",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          5500,
+          120
+        ],
+        "parameters": {
+          "jsCode": "let b=$input.first().json; if(typeof b.data===\"string\") b=JSON.parse(b.data); if(b.body) b=b.body;const r=b._embedded?.notes?.[0]; if(!Number.isInteger(r?.id)) throw new Error('Unexpected note response'); return [{json:{lead_id:$('Verified lead').first().json.lead_id,note_id:r.id}}];"
+        }
+      },
+      {
+        "id": "Receipt",
+        "name": "Receipt",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          5720,
+          0
+        ],
+        "parameters": {
+          "jsCode": "const r=$input.first().json; if(!Number.isInteger(r.lead_id)||!Number.isInteger(r.note_id)) throw new Error('Missing receipt'); return [{json:{ok:true,lead_id:r.lead_id,note_id:r.note_id,pipeline_id:11370274}}];"
+        }
+      },
+      {
+        "id": "Respond",
+        "name": "Respond",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          6820,
+          0
+        ],
+        "parameters": {
+          "jsCode": "return [{json:{ok:true,completed:true}}];"
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "New CRM note",
+                "leftValue": "={{ $('Decide note').first().json.note_found }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "false",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          5940,
+          0
+        ],
+        "id": "New event",
+        "name": "New event"
+      },
+      {
+        "parameters": {
+          "jsCode": "const p = $('Prepare').first().json;\nconst r = $('Receipt').first().json;\nconst n = p.notification || {};\nconst lines = [\n  'Новая заявка с сайта',\n  'Услуга: ' + (n.service || 'не указана'),\n  'Имя: ' + (n.name || 'не указано'),\n  'Компания: ' + (n.company || 'не указана'),\n  'Контакт: ' + (n.contact || 'не указан'),\n  'Сообщение: ' + (n.message || 'не указано'),\n  'amoCRM: https://krebrikus.amocrm.ru/leads/detail/' + r.lead_id\n];\nreturn [{json:{text:lines.join('\\n').slice(0,3900)}}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          6160,
+          -100
+        ],
+        "id": "Prepare Telegram",
+        "name": "Prepare Telegram"
+      },
+      {
+        "parameters": {
+          "url": "https://key-solution-telegram-relay.grahmangulov.workers.dev/sendMessage",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({chat_id:-5554232242,text:$json.text,disable_web_page_preview:true}) }}",
+          "options": {
+            "timeout": 15000,
+            "response": {
+              "response": {
+                "responseFormat": "json",
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          6380,
+          -100
+        ],
+        "id": "Send Telegram",
+        "name": "Send Telegram",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "0ee0d52a-ba78-4001-8b87-dd74a2bd0741",
+            "name": "Cloudflare Telegram Relay — Bearer"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "let b = $input.first().json;\nif (typeof b.data === 'string') b = JSON.parse(b.data);\nif (b.body) b = b.body;\nif (b.ok !== true || !Number.isInteger(b.result?.message_id)) throw new Error('Telegram delivery was not confirmed');\nconst r = $('Receipt').first().json;\nreturn [{json:{...r,telegram_ok:true,telegram_message_id:b.result.message_id}}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          6600,
+          -100
+        ],
+        "id": "Telegram receipt",
+        "name": "Telegram receipt"
+      },
+      {
+        "parameters": {
+          "url": "={{ 'https://krebrikus.amocrm.ru/api/v4/leads/'+$json.lead_id+'?with=contacts' }}",
+          "method": "GET",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "options": {
+            "timeout": 15000,
+            "response": {
+              "response": {
+                "responseFormat": "json",
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1980,
+          -220
+        ],
+        "id": "Read linked contacts",
+        "name": "Read linked contacts",
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "L9Xprc4UN9m0Cgtb",
+            "name": "amoCRM — Ключевое решение"
+          }
+        },
+        "alwaysOutputData": true
+      },
+      {
+        "parameters": {
+          "jsCode": "let b=$input.first().json; if(typeof b.data==='string') b=JSON.parse(b.data); if(b.body) b=b.body;\nconst contacts=b._embedded?.contacts||[]; if(contacts.length>1) throw new Error('Multiple linked contacts require review');\nreturn [{json:{lead_id:b.id,contact_linked:contacts.length===1,contact_id:contacts[0]?.id||null}}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2200,
+          -220
+        ],
+        "id": "Decide linked contact",
+        "name": "Decide linked contact"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "Contact linked",
+                "leftValue": "={{ $json.contact_linked }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          2420,
+          -220
+        ],
+        "id": "Contact linked",
+        "name": "Contact linked"
+      },
+      {
+        "parameters": {
+          "url": "={{ 'https://krebrikus.amocrm.ru/api/v4/contacts?limit=250&query='+encodeURIComponent($('Prepare').first().json.contactQuery) }}",
+          "method": "GET",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "options": {
+            "timeout": 15000,
+            "response": {
+              "response": {
+                "responseFormat": "json",
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2640,
+          -120
+        ],
+        "id": "Find contact",
+        "name": "Find contact",
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "L9Xprc4UN9m0Cgtb",
+            "name": "amoCRM — Ключевое решение"
+          }
+        },
+        "alwaysOutputData": true
+      },
+      {
+        "parameters": {
+          "jsCode": "let b=$input.first().json; if(typeof b.data==='string'&&b.data) b=JSON.parse(b.data); if(b.body) b=b.body;\nconst p=$('Prepare').first().json, contacts=b?._embedded?.contacts||[];\nconst digits=v=>String(v||'').replace(/\\D/g,'');\nconst exact=contacts.filter(c=>{\n  if(p.contactKind==='name') return c.name===p.contactQuery;\n  const vals=(c.custom_fields_values||[]).filter(f=>f.field_code===(p.contactKind==='email'?'EMAIL':'PHONE')).flatMap(f=>f.values||[]).map(v=>String(v.value||''));\n  return p.contactKind==='email' ? vals.some(v=>v.toLowerCase()===p.contactQuery.toLowerCase()) : vals.some(v=>digits(v)===digits(p.contactQuery));\n});\nif(exact.length>1) throw new Error('Duplicate exact contacts require review');\nreturn [{json:{contact_found:exact.length===1,contact_id:exact[0]?.id||null}}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2860,
+          -120
+        ],
+        "id": "Decide contact",
+        "name": "Decide contact"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "Contact exists",
+                "leftValue": "={{ $json.contact_found }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          3080,
+          -120
+        ],
+        "id": "Contact exists",
+        "name": "Contact exists"
+      },
+      {
+        "parameters": {
+          "url": "https://krebrikus.amocrm.ru/api/v4/contacts",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify([$('Prepare').first().json.contactModel]) }}",
+          "options": {
+            "timeout": 15000,
+            "response": {
+              "response": {
+                "responseFormat": "json",
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3300,
+          20
+        ],
+        "id": "Create contact",
+        "name": "Create contact",
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "L9Xprc4UN9m0Cgtb",
+            "name": "amoCRM — Ключевое решение"
+          }
+        },
+        "alwaysOutputData": true
+      },
+      {
+        "parameters": {
+          "jsCode": "let b=$input.first().json; if(typeof b.data==='string') b=JSON.parse(b.data); if(b.body) b=b.body;\nconst r=b._embedded?.contacts?.[0]; if(!Number.isInteger(r?.id)) throw new Error('Unexpected contact create response');\nreturn [{json:{contact_id:r.id}}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3520,
+          20
+        ],
+        "id": "Created contact",
+        "name": "Created contact"
+      },
+      {
+        "parameters": {
+          "jsCode": "const contact_id=$input.first().json.contact_id, lead_id=$('Verified lead').first().json.lead_id;\nif(!Number.isInteger(contact_id)||!Number.isInteger(lead_id)) throw new Error('Missing link identifiers');\nreturn [{json:{lead_id,contact_id,body:[{to_entity_id:contact_id,to_entity_type:'contacts'}]}}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3740,
+          -120
+        ],
+        "id": "Link payload",
+        "name": "Link payload"
+      },
+      {
+        "parameters": {
+          "url": "={{ 'https://krebrikus.amocrm.ru/api/v4/leads/'+$json.lead_id+'/link' }}",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.body) }}",
+          "options": {
+            "timeout": 15000,
+            "response": {
+              "response": {
+                "responseFormat": "json",
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          3960,
+          -120
+        ],
+        "id": "Link contact",
+        "name": "Link contact",
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "L9Xprc4UN9m0Cgtb",
+            "name": "amoCRM — Ключевое решение"
+          }
+        },
+        "alwaysOutputData": true
+      },
+      {
+        "parameters": {
+          "url": "={{ 'https://krebrikus.amocrm.ru/api/v4/leads/'+$('Link payload').first().json.lead_id+'?with=contacts' }}",
+          "method": "GET",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "options": {
+            "timeout": 15000,
+            "response": {
+              "response": {
+                "responseFormat": "json",
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          4180,
+          -120
+        ],
+        "id": "Verify contact link",
+        "name": "Verify contact link",
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "L9Xprc4UN9m0Cgtb",
+            "name": "amoCRM — Ключевое решение"
+          }
+        },
+        "alwaysOutputData": true
+      },
+      {
+        "parameters": {
+          "jsCode": "let b=$input.first().json; if(typeof b.data==='string') b=JSON.parse(b.data); if(b.body) b=b.body;\nconst x=$('Link payload').first().json, ok=b.id===x.lead_id&&(b._embedded?.contacts||[]).some(c=>c.id===x.contact_id);\nif(!ok) throw new Error('Contact link verification failed'); return [{json:{lead_id:x.lead_id,contact_id:x.contact_id}}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4400,
+          -120
+        ],
+        "id": "Linked receipt",
+        "name": "Linked receipt"
+      }
+    ],
+    "connections": {
+      "Local webhook": {
+        "main": [
+          [
+            {
+              "node": "Prepare",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare": {
+        "main": [
+          [
+            {
+              "node": "Find lead",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find lead": {
+        "main": [
+          [
+            {
+              "node": "Decide lead",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Decide lead": {
+        "main": [
+          [
+            {
+              "node": "Lead exists",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Lead exists": {
+        "main": [
+          [
+            {
+              "node": "Verify destination",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Create lead",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create lead": {
+        "main": [
+          [
+            {
+              "node": "Created ID",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Created ID": {
+        "main": [
+          [
+            {
+              "node": "Verify destination",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Verify destination": {
+        "main": [
+          [
+            {
+              "node": "Verified lead",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Verified lead": {
+        "main": [
+          [
+            {
+              "node": "Read linked contacts",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read notes": {
+        "main": [
+          [
+            {
+              "node": "Decide note",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Decide note": {
+        "main": [
+          [
+            {
+              "node": "Note exists",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Note exists": {
+        "main": [
+          [
+            {
+              "node": "Receipt",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Create note",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create note": {
+        "main": [
+          [
+            {
+              "node": "Created note",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Created note": {
+        "main": [
+          [
+            {
+              "node": "Receipt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Receipt": {
+        "main": [
+          [
+            {
+              "node": "New event",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "New event": {
+        "main": [
+          [
+            {
+              "node": "Prepare Telegram",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Telegram": {
+        "main": [
+          [
+            {
+              "node": "Send Telegram",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send Telegram": {
+        "main": [
+          [
+            {
+              "node": "Telegram receipt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Telegram receipt": {
+        "main": [
+          [
+            {
+              "node": "Respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read linked contacts": {
+        "main": [
+          [
+            {
+              "node": "Decide linked contact",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Decide linked contact": {
+        "main": [
+          [
+            {
+              "node": "Contact linked",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Contact linked": {
+        "main": [
+          [
+            {
+              "node": "Read notes",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Find contact",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find contact": {
+        "main": [
+          [
+            {
+              "node": "Decide contact",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Decide contact": {
+        "main": [
+          [
+            {
+              "node": "Contact exists",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Contact exists": {
+        "main": [
+          [
+            {
+              "node": "Link payload",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Create contact",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create contact": {
+        "main": [
+          [
+            {
+              "node": "Created contact",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Created contact": {
+        "main": [
+          [
+            {
+              "node": "Link payload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Link payload": {
+        "main": [
+          [
+            {
+              "node": "Link contact",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Link contact": {
+        "main": [
+          [
+            {
+              "node": "Verify contact link",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Verify contact link": {
+        "main": [
+          [
+            {
+              "node": "Linked receipt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Linked receipt": {
+        "main": [
+          [
+            {
+              "node": "Read notes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "saveDataSuccessExecution": "all",
+      "saveDataErrorExecution": "all",
+      "saveManualExecutions": false,
+      "executionTimeout": 110
+    },
+    "staticData": null,
+    "meta": null,
+    "nodeGroups": [],
+    "pinData": {},
+    "versionId": "1553f9e8-4e88-4bcd-9415-2edc055c0493",
+    "activeVersionId": "1553f9e8-4e88-4bcd-9415-2edc055c0493",
+    "versionCounter": 7,
+    "triggerCount": 1,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-11-07T15:58:21.418Z",
+        "createdAt": "2026-11-07T15:58:21.418Z",
+        "role": "workflow:owner",
+        "workflowId": "keySolutionDeliveryTelegramDraft20261107",
+        "projectId": "BbhNwCU8OQ3Q5Jwr",
+        "project": {
+          "updatedAt": "2026-10-03T16:34:05.929Z",
+          "createdAt": "2026-09-14T07:26:02.424Z",
+          "id": "BbhNwCU8OQ3Q5Jwr",
+          "name": "Georg Rakhmangulov <krebrikus@yandex.ru>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "9930e590-19ae-4163-b1e0-506ee6969887"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  }
+]
