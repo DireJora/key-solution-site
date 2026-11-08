@@ -1,6 +1,6 @@
 [
   {
-    "updatedAt": "2026-11-07T20:54:45.000Z",
+    "updatedAt": "2026-11-08T13:27:08.000Z",
     "createdAt": "2026-11-07T15:58:21.412Z",
     "id": "keySolutionDeliveryTelegramDraft20261107",
     "name": "Ключевое решение — сайт → amoCRM → Telegram",
@@ -204,7 +204,7 @@
           0
         ],
         "parameters": {
-          "jsCode": "let b=$input.first().json; if(typeof b.data===\"string\") b=JSON.parse(b.data); if(b.body) b=b.body;const p=$('Prepare').first().json; if(b.pipeline_id!==11370274||b.name!==p.name||!Number.isInteger(b.id)) throw new Error('Destination mismatch'); return [{json:{lead_id:b.id}}];"
+          "jsCode": "let b=$input.first().json; if(typeof b.data===\"string\") b=JSON.parse(b.data); if(b.body) b=b.body;const p=$('Prepare').first().json; if(b.pipeline_id!==11370274||b.name!==p.name||!Number.isInteger(b.id)) throw new Error('Destination mismatch'); if(!Number.isInteger(b.responsible_user_id)) throw new Error('Missing responsible user'); return [{json:{lead_id:b.id,responsible_user_id:b.responsible_user_id}}];"
         }
       },
       {
@@ -351,7 +351,7 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          6820,
+          8140,
           0
         ],
         "parameters": {
@@ -392,13 +392,13 @@
       },
       {
         "parameters": {
-          "jsCode": "const p = $('Prepare').first().json;\nconst r = $('Receipt').first().json;\nconst n = p.notification || {};\nconst lines = [\n  'Новая заявка с сайта',\n  'Услуга: ' + (n.service || 'не указана'),\n  'Имя: ' + (n.name || 'не указано'),\n  'Компания: ' + (n.company || 'не указана'),\n  'Контакт: ' + (n.contact || 'не указан'),\n  'Сообщение: ' + (n.message || 'не указано'),\n  'amoCRM: https://krebrikus.amocrm.ru/leads/detail/' + r.lead_id\n];\nreturn [{json:{text:lines.join('\\n').slice(0,3900)}}];"
+          "jsCode": "const p = $('Prepare').first().json;\nconst r = $('Receipt').first().json;\nconst n = p.notification || {};\nconst lines = [\n  'Новая заявка с сайта',\n  'SLA: задача связаться с клиентом в течение 1 часа создана в amoCRM',\n  'Услуга: ' + (n.service || 'не указана'),\n  'Имя: ' + (n.name || 'не указано'),\n  'Компания: ' + (n.company || 'не указана'),\n  'Контакт: ' + (n.contact || 'не указан'),\n  'Сообщение: ' + (n.message || 'не указано'),\n  'amoCRM: https://krebrikus.amocrm.ru/leads/detail/' + r.lead_id\n];\nreturn [{json:{text:lines.join('\\n').slice(0,3900)}}];"
         },
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          6160,
-          -100
+          7480,
+          -260
         ],
         "id": "Prepare Telegram",
         "name": "Prepare Telegram"
@@ -425,8 +425,8 @@
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.2,
         "position": [
-          6380,
-          -100
+          7700,
+          -260
         ],
         "id": "Send Telegram",
         "name": "Send Telegram",
@@ -444,8 +444,8 @@
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          6600,
-          -100
+          7920,
+          -260
         ],
         "id": "Telegram receipt",
         "name": "Telegram receipt"
@@ -744,6 +744,144 @@
         ],
         "id": "Linked receipt",
         "name": "Linked receipt"
+      },
+      {
+        "parameters": {
+          "jsCode": "const lead=$('Verified lead').first().json, p=$('Prepare').first().json;\nif(!Number.isInteger(lead.lead_id)||!Number.isInteger(lead.responsible_user_id)) throw new Error('Missing SLA identifiers');\nconst request_id='KS-SLA:'+p.marker;\nconst text='Связаться с новой заявкой сайта в течение 1 часа. '+request_id;\nreturn [{json:{lead_id:lead.lead_id,responsible_user_id:lead.responsible_user_id,text,complete_till:Math.floor(Date.now()/1000)+3600,request_id}}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          6160,
+          -260
+        ],
+        "id": "Prepare SLA task",
+        "name": "Prepare SLA task"
+      },
+      {
+        "parameters": {
+          "url": "={{ 'https://krebrikus.amocrm.ru/api/v4/tasks?limit=250&filter[entity_type]=leads&filter[entity_id]='+$json.lead_id+'&filter[is_completed]=0' }}",
+          "method": "GET",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "options": {
+            "timeout": 15000,
+            "response": {
+              "response": {
+                "responseFormat": "json",
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          6380,
+          -260
+        ],
+        "id": "Find SLA task",
+        "name": "Find SLA task",
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "L9Xprc4UN9m0Cgtb",
+            "name": "amoCRM — Ключевое решение"
+          }
+        },
+        "alwaysOutputData": true
+      },
+      {
+        "parameters": {
+          "jsCode": "let b=$input.first().json; if(typeof b.data==='string'&&b.data) b=JSON.parse(b.data); if(b.body) b=b.body;\nconst p=$('Prepare SLA task').first().json, tasks=b?._embedded?.tasks||[];\nconst exact=tasks.filter(t=>t.entity_type==='leads'&&t.entity_id===p.lead_id&&t.text===p.text&&!t.is_completed);\nif(exact.length>1) throw new Error('Duplicate SLA tasks require review');\nreturn [{json:{task_found:exact.length===1,task_id:exact[0]?.id||null}}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          6600,
+          -260
+        ],
+        "id": "Decide SLA task",
+        "name": "Decide SLA task"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "SLA task exists",
+                "leftValue": "={{ $json.task_found }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          6820,
+          -260
+        ],
+        "id": "SLA task exists",
+        "name": "SLA task exists"
+      },
+      {
+        "parameters": {
+          "url": "https://krebrikus.amocrm.ru/api/v4/tasks",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify([{task_type_id:1,text:$('Prepare SLA task').first().json.text,complete_till:$('Prepare SLA task').first().json.complete_till,entity_id:$('Prepare SLA task').first().json.lead_id,entity_type:'leads',responsible_user_id:$('Prepare SLA task').first().json.responsible_user_id,request_id:$('Prepare SLA task').first().json.request_id}]) }}",
+          "options": {
+            "timeout": 15000,
+            "response": {
+              "response": {
+                "responseFormat": "json",
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          7040,
+          -140
+        ],
+        "id": "Create SLA task",
+        "name": "Create SLA task",
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "L9Xprc4UN9m0Cgtb",
+            "name": "amoCRM — Ключевое решение"
+          }
+        },
+        "alwaysOutputData": true
+      },
+      {
+        "parameters": {
+          "jsCode": "let b=$input.first().json; if(typeof b.data==='string') b=JSON.parse(b.data); if(b.body) b=b.body;\nconst r=b._embedded?.tasks?.[0]; if(!Number.isInteger(r?.id)) throw new Error('Unexpected SLA task response');\nreturn [{json:{task_id:r.id,created:true}}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          7260,
+          -140
+        ],
+        "id": "SLA task receipt",
+        "name": "SLA task receipt"
       }
     ],
     "connections": {
@@ -930,7 +1068,7 @@
         "main": [
           [
             {
-              "node": "Prepare Telegram",
+              "node": "Prepare SLA task",
               "type": "main",
               "index": 0
             }
@@ -1122,6 +1260,79 @@
             }
           ]
         ]
+      },
+      "Prepare SLA task": {
+        "main": [
+          [
+            {
+              "node": "Find SLA task",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find SLA task": {
+        "main": [
+          [
+            {
+              "node": "Decide SLA task",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Decide SLA task": {
+        "main": [
+          [
+            {
+              "node": "SLA task exists",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "SLA task exists": {
+        "main": [
+          [
+            {
+              "node": "Prepare Telegram",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Create SLA task",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create SLA task": {
+        "main": [
+          [
+            {
+              "node": "SLA task receipt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "SLA task receipt": {
+        "main": [
+          [
+            {
+              "node": "Prepare Telegram",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "settings": {
@@ -1135,9 +1346,9 @@
     "meta": null,
     "nodeGroups": [],
     "pinData": {},
-    "versionId": "1553f9e8-4e88-4bcd-9415-2edc055c0493",
-    "activeVersionId": "1553f9e8-4e88-4bcd-9415-2edc055c0493",
-    "versionCounter": 7,
+    "versionId": "323eb5c3-bde7-42ca-9e2b-e9f23027b3e1",
+    "activeVersionId": "323eb5c3-bde7-42ca-9e2b-e9f23027b3e1",
+    "versionCounter": 8,
     "triggerCount": 1,
     "sourceWorkflowId": null,
     "tags": [],
