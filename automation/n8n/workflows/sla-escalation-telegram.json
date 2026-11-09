@@ -1,0 +1,519 @@
+[
+  {
+    "id": "keySolutionSlaEscalation20261109",
+    "name": "Ключевое решение — SLA эскалация в Telegram",
+    "active": false,
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "minutes",
+                "minutesInterval": 10
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          0
+        ],
+        "id": "Trigger",
+        "name": "Trigger"
+      },
+      {
+        "parameters": {
+          "url": "https://krebrikus.amocrm.ru/api/v4/tasks?limit=250&filter[is_completed]=0&order[complete_till]=asc",
+          "method": "GET",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "options": {
+            "timeout": 15000,
+            "response": {
+              "response": {
+                "responseFormat": "json",
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          220,
+          0
+        ],
+        "id": "Read open tasks",
+        "name": "Read open tasks",
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "L9Xprc4UN9m0Cgtb",
+            "name": "amoCRM — Ключевое решение"
+          }
+        },
+        "alwaysOutputData": true
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "let b=$input.first().json; if(typeof b.data==='string'&&b.data) b=JSON.parse(b.data); if(b.body) b=b.body;\nconst now=Math.floor(Date.now()/1000), exactLead=0;\nconst tasks=b?._embedded?.tasks||[];\nreturn tasks.filter(t=>t.entity_type==='leads'&&!t.is_completed&&Number(t.complete_till)<=now&&String(t.text||'').includes('KS-SLA:KS-SITE:')&&(!exactLead||t.entity_id===exactLead)).map(t=>({json:{task_id:t.id,lead_id:t.entity_id,responsible_user_id:t.responsible_user_id,complete_till:t.complete_till,text:t.text}}));"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          440,
+          0
+        ],
+        "id": "Overdue SLA tasks",
+        "name": "Overdue SLA tasks"
+      },
+      {
+        "parameters": {
+          "url": "={{ 'https://krebrikus.amocrm.ru/api/v4/leads/'+$json.lead_id }}",
+          "method": "GET",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "options": {
+            "timeout": 15000,
+            "response": {
+              "response": {
+                "responseFormat": "json",
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          660,
+          0
+        ],
+        "id": "Read lead",
+        "name": "Read lead",
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "L9Xprc4UN9m0Cgtb",
+            "name": "amoCRM — Ключевое решение"
+          }
+        },
+        "alwaysOutputData": true
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "let b=$json; if(typeof b.data==='string'&&b.data) b=JSON.parse(b.data); if(b.body) b=b.body;\nconst task=$('Overdue SLA tasks').item.json;\nreturn {json:{task,lead:{id:b.id,name:b.name,pipeline_id:b.pipeline_id,status_id:b.status_id},eligible:b.pipeline_id===11370274&&b.status_id===89096506&&b.id===task.lead_id}};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          880,
+          0
+        ],
+        "id": "Eligible lead",
+        "name": "Eligible lead"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "Lead still new",
+                "leftValue": "={{ $json.eligible }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          990,
+          0
+        ],
+        "id": "Lead still new",
+        "name": "Lead still new"
+      },
+      {
+        "parameters": {
+          "url": "={{ 'https://krebrikus.amocrm.ru/api/v4/leads/'+$json.lead.id+'/notes?limit=250&order[updated_at]=desc' }}",
+          "method": "GET",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "options": {
+            "timeout": 15000,
+            "response": {
+              "response": {
+                "responseFormat": "json",
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1100,
+          0
+        ],
+        "id": "Read alert notes",
+        "name": "Read alert notes",
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "L9Xprc4UN9m0Cgtb",
+            "name": "amoCRM — Ключевое решение"
+          }
+        },
+        "alwaysOutputData": true
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "let b=$json; if(typeof b.data==='string'&&b.data) b=JSON.parse(b.data); if(b.body) b=b.body;\nconst ctx=$('Eligible lead').item.json, marker='KS-SLA-ALERT:'+ctx.task.task_id;\nconst notes=b?._embedded?.notes||[];\nconst decode=s=>String(s||'').replace(/&quot;/g,'\"').replace(/&amp;/g,'&');\nconst found=notes.some(n=>n.note_type==='common'&&decode(n.params?.text).includes(marker));\nreturn {json:{...ctx,marker,alert_exists:found}};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1320,
+          0
+        ],
+        "id": "Decide alert",
+        "name": "Decide alert"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "Alert exists",
+                "leftValue": "={{ $json.alert_exists }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1540,
+          0
+        ],
+        "id": "Alert exists",
+        "name": "Alert exists"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "return {json:{ok:true,skipped:'already_alerted'}};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1760,
+          -120
+        ],
+        "id": "Already alerted",
+        "name": "Already alerted"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "const x=$json, overdue=Math.max(0,Math.floor(Date.now()/1000)-Number(x.task.complete_till||0));\nconst mins=Math.max(1,Math.floor(overdue/60));\nconst text=['⚠️ SLA просрочен','Задача связаться с новой заявкой не выполнена более '+mins+' мин.','Сделка: '+x.lead.name,'Ответственный amoCRM: '+x.task.responsible_user_id,'Открыть: https://krebrikus.amocrm.ru/leads/detail/'+x.lead.id].join('\\n');\nreturn {json:{...x,telegram_text:text.slice(0,3900)}};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1760,
+          120
+        ],
+        "id": "Prepare escalation",
+        "name": "Prepare escalation"
+      },
+      {
+        "parameters": {
+          "url": "https://key-solution-telegram-relay.grahmangulov.workers.dev/sendMessage",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({chat_id:-5554232242,text:$json.telegram_text,disable_web_page_preview:true}) }}",
+          "options": {
+            "timeout": 15000,
+            "response": {
+              "response": {
+                "responseFormat": "json",
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1980,
+          120
+        ],
+        "id": "Send escalation",
+        "name": "Send escalation",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "0ee0d52a-ba78-4001-8b87-dd74a2bd0741",
+            "name": "Cloudflare Telegram Relay — Bearer"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "let b=$json; if(typeof b.data==='string'&&b.data) b=JSON.parse(b.data); if(b.body) b=b.body;\nif(b.ok!==true||!Number.isInteger(b.result?.message_id)) throw new Error('Telegram escalation not confirmed');\nconst x=$('Prepare escalation').item.json, telegram_message_id=b.result.message_id;\nreturn {json:{...x,telegram_message_id,note_body:[{note_type:'common',params:{text:x.marker+' | Telegram message '+telegram_message_id}}]}};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2200,
+          120
+        ],
+        "id": "Escalation receipt",
+        "name": "Escalation receipt"
+      },
+      {
+        "parameters": {
+          "url": "={{ 'https://krebrikus.amocrm.ru/api/v4/leads/'+$json.lead.id+'/notes' }}",
+          "method": "POST",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBearerAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.note_body) }}",
+          "options": {
+            "timeout": 15000,
+            "response": {
+              "response": {
+                "responseFormat": "json",
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2420,
+          120
+        ],
+        "id": "Create alert marker",
+        "name": "Create alert marker",
+        "credentials": {
+          "httpBearerAuth": {
+            "id": "L9Xprc4UN9m0Cgtb",
+            "name": "amoCRM — Ключевое решение"
+          }
+        },
+        "alwaysOutputData": true
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "let b=$json; if(typeof b.data==='string'&&b.data) b=JSON.parse(b.data); if(b.body) b=b.body;\nconst id=b._embedded?.notes?.[0]?.id; if(!Number.isInteger(id)) throw new Error('Alert marker was not saved');\nreturn {json:{ok:true,alerted:true,note_id:id}};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2640,
+          120
+        ],
+        "id": "Finished",
+        "name": "Finished"
+      }
+    ],
+    "connections": {
+      "Trigger": {
+        "main": [
+          [
+            {
+              "node": "Read open tasks",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read open tasks": {
+        "main": [
+          [
+            {
+              "node": "Overdue SLA tasks",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Overdue SLA tasks": {
+        "main": [
+          [
+            {
+              "node": "Read lead",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Read lead": {
+        "main": [
+          [
+            {
+              "node": "Eligible lead",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Eligible lead": {
+        "main": [
+          [
+            {
+              "node": "Lead still new",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Lead still new": {
+        "main": [
+          [
+            {
+              "node": "Read alert notes",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      },
+      "Read alert notes": {
+        "main": [
+          [
+            {
+              "node": "Decide alert",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Decide alert": {
+        "main": [
+          [
+            {
+              "node": "Alert exists",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Alert exists": {
+        "main": [
+          [
+            {
+              "node": "Already alerted",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Prepare escalation",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare escalation": {
+        "main": [
+          [
+            {
+              "node": "Send escalation",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send escalation": {
+        "main": [
+          [
+            {
+              "node": "Escalation receipt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Escalation receipt": {
+        "main": [
+          [
+            {
+              "node": "Create alert marker",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create alert marker": {
+        "main": [
+          [
+            {
+              "node": "Finished",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "saveDataSuccessExecution": "all",
+      "saveDataErrorExecution": "all",
+      "saveManualExecutions": true,
+      "executionTimeout": 180
+    },
+    "staticData": null,
+    "pinData": {},
+    "tags": []
+  }
+]
